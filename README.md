@@ -1,12 +1,3 @@
-           _             _       
-          | |           | |      
-    _ __  | | _ __    __| | _ __ 
-   | '_ \ | || '_ \  / _` || '__|
-   | |_) || || | | || (_| || |   
-   | .__/ |_||_| |_| \__,_||_|   
-   | |                          
-   |_|                     v 0.2
- =================================
 
 PLNDR provides identification and quick survey endpoints
 and captures screenshots and source code of web pages and banner grabs 
