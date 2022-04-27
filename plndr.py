@@ -242,10 +242,10 @@ def get_target_ips(target):
     except Exception as err:
         sys.exit(f"Exiting - error getting target IP addresses - {err}")
 
-def get_endpoints(local_ips, web_ports):
+def get_endpoints(target_ips, ports):
     endpoints = []
-    for ip in local_ips:
-        proc  = subprocess.run(['nmap', '-Pn', f'{ip}', '-p', ','.join(str(x) for x in web_ports), '--open'], capture_output=True)
+    for ip in target_ips:
+        proc  = subprocess.run(['nmap', '-Pn', '--max-retries=5', f'{ip}', '-p', ','.join(str(x) for x in ports), '--open'], capture_output=True)
         results = proc.stdout.decode().splitlines()
         open_ports = [x.split('/')[0] for x in results if 'open' in x]
         endpoints.extend([(ip,x) for x in open_ports])
