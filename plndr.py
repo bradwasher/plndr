@@ -90,7 +90,7 @@ v 0.2
     # detect web endpoints
     print(f'[+] identifying web endpoints...')
     web_endpoints = get_endpoints(target_ips, web_ports)
-    print(f'[+] web endpoints identified')
+    print(f'[+] {len(web_endpoints)} web endpoints identified')
     for endpoint in web_endpoints:
         print(f'  |_ {endpoint[0]}:{endpoint[1]}')
     save_collection('web_endpoints.txt', web_endpoints, session_directory)
@@ -110,7 +110,7 @@ v 0.2
     # detect tty endpoints
     print(f'[+] identifying tty endpoints...')
     tty_endpoints = get_endpoints(target_ips, tty_ports)
-    print(f'[+] tty endpoints identified')
+    print(f'[+] {len(tty_endpoints)} tty endpoints identified')
     for endpoint in tty_endpoints:
         print(f'  |_ {endpoint[0]}:{endpoint[1]}')
     save_collection('tty_endpoints.txt', tty_endpoints, session_directory)
@@ -123,7 +123,7 @@ v 0.2
     # detect smb endpoints
     print(f'[+] identifying smb endpoints...')
     smb_endpoints = get_endpoints(target_ips, smb_ports)
-    print(f'[+] smb endpoints identified')
+    print(f'[+] {len(smb_endpoints)} smb endpoints identified')
     for endpoint in smb_endpoints:
         print(f'  |_ {endpoint[0]}:{endpoint[1]}')
     save_collection('smb_endpoints.txt', smb_endpoints, session_directory)
