@@ -177,7 +177,7 @@ def get_settings():
     try:
         rdp_ports = parser.get('default_values', 'rdp_ports').split(',')
     except:
-        tty_ports = ['3389']
+        rdp_ports = ['3389']
     
     # smb_ports
     try:
