@@ -36,7 +36,7 @@ def main():
   | |                          
   |_|           by: procre8or
 =================================
-v 0.2
+v 0.2.1
 
 ''')
     
@@ -305,7 +305,7 @@ def get_tty_banners(endpoints, session_directory, timeout):
     for endpoint in endpoints:
         file_name = f"{endpoint[0].replace('.', '_')}_{endpoint[1]}_banner.txt"
         try:
-            subprocess.run(['nmap', '-sV', '--script-timeout=10s', '--script=banner', f'{endpoint[0]}', '-p', f'{endpoint[1]}', '-oN', f'{session_directory}/{file_name}'], timeout=timeout, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(['nmap', '-sV', '--script=banner', f'{endpoint[0]}', '-p', f'{endpoint[1]}', '-oN', f'{session_directory}/{file_name}'], timeout=timeout, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except subprocess.TimeoutExpired:
             print(f' |x timed out getting {endpoint[0]}:{endpoint[1]}')
 
@@ -314,7 +314,7 @@ def get_rdp_banners(endpoints, session_directory, timeout):
     for endpoint in endpoints:
         file_name = f"{endpoint[0].replace('.', '_')}_{endpoint[1]}_rdp.txt"
         try:
-            subprocess.run(['nmap', '--script-timeout=10s', '--script=rdp-ntlm-info', f'{endpoint[0]}', '-p', f'{endpoint[1]}', '-oN', f'{session_directory}/{file_name}'], timeout=timeout, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(['nmap', '--script=rdp-ntlm-info', f'{endpoint[0]}', '-p', f'{endpoint[1]}', '-oN', f'{session_directory}/{file_name}'], timeout=timeout, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except subprocess.TimeoutExpired:
             print(f' |x timed out getting {endpoint[0]}:{endpoint[1]}')
 
@@ -324,7 +324,7 @@ def get_smb_enum(endpoints, session_directory, timeout):
     for endpoint in endpoints:
         file_name = f"{endpoint[0].replace('.', '_')}_{endpoint[1]}_smb_enum.txt"
         try:
-            subprocess.run(['nmap', '-sV', '-Pn', '--script-timeout=15s', '--script=smb-enum-shares.nse,smb-enum-users.nse,smb-os-discovery.nse', f'{endpoint[0]}', '-p', f'{endpoint[1]}', '-oN', f'{session_directory}/{file_name}'], timeout=timeout, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(['nmap', '-sV', '-Pn',  '--script=smb-enum-shares.nse,smb-enum-users.nse,smb-os-discovery.nse', f'{endpoint[0]}', '-p', f'{endpoint[1]}', '-oN', f'{session_directory}/{file_name}'], timeout=timeout, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except subprocess.TimeoutExpired:
             print(f' |x timed out getting {endpoint[0]}:{endpoint[1]}')
 
