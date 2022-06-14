@@ -41,7 +41,7 @@ v 0.2
 ''')
     
     # get default settings
-    output_directory, web_ports, tty_ports, smb_ports, interface_name, user_agent = get_settings()
+    output_directory, web_ports, tty_ports, rdp_ports, smb_ports, interface_name, user_agent, timeout = get_settings()
  
     # get command line args; interface name overrides interface in default settings
     args = get_args()
@@ -63,7 +63,7 @@ v 0.2
     
     # if target not specified on command line, use arp-scan to generate list of target IPs
     if args['target']:
-        print(f"[+] beginning PLNDR of {args['target']} on interface {interface_name}")
+        print(f"[+] beginning PLNDR of {args['target']} on interface {interface_name} with timeout of {int(timeout)} seconds")
         print(f'[+] output saved to {session_directory}')
         print(f'[+] identifying target ip addresses...')    
 
@@ -73,7 +73,7 @@ v 0.2
         cidr = get_network_cidr(interface_name)
 
         # output initial 
-        print(f'[+] beginning PLNDR of {cidr} on interface {interface_name}')
+        print(f'[+] beginning PLNDR of {cidr} on interface {interface_name} with timeout of {int(timeout)} seconds')
         print(f'[+] output saved to {session_directory}')
         print(f'[+] identifying local ip addresses...')
 
@@ -97,15 +97,15 @@ v 0.2
 
     # grab screenshots from web endpoints
     print(f'[+] grabbing screenshots from web endpoints...')
-    get_web_screenshots(web_endpoints, session_directory)
+    get_web_screenshots(web_endpoints, session_directory, timeout)
 
     # grab page source from web endpoints
     print(f'[+] grabbing source code from web endpoints...')
-    get_web_source(web_endpoints, session_directory, user_agent)
+    get_web_source(web_endpoints, session_directory, user_agent, timeout)
 
     # grab banner from web endpoints
     print(f'[+] grabbing banners from web endpoints...')
-    get_web_banners(web_endpoints, session_directory, user_agent)
+    get_web_banners(web_endpoints, session_directory, user_agent, timeout)
 
     # detect tty endpoints
     print(f'[+] identifying tty endpoints...')
@@ -117,8 +117,19 @@ v 0.2
     
     # getting banners from each tty endpoint
     print(f'[+] getting banners from tty endpoints...')
-    get_tty_banners(tty_endpoints, session_directory)
+    get_tty_banners(tty_endpoints, session_directory, timeout)
 
+    # detect rdp endpoints
+    print(f'[+] identifying rdp endpoints...')
+    rdp_endpoints = get_endpoints(target_ips, rdp_ports)
+    print(f'[+] {len(rdp_endpoints)} rdp endpoints identified')
+    for endpoint in rdp_endpoints:
+        print(f'  |_ {endpoint[0]}:{endpoint[1]}')
+    save_collection('rdp_endpoints.txt', rdp_endpoints, session_directory)
+    
+    # getting ntlm from each rdp endpoint
+    print(f'[+] getting ntlm dtaa from rdp endpoints...')
+    get_rdp_banners(rdp_endpoints, session_directory, timeout)
 
     # detect smb endpoints
     print(f'[+] identifying smb endpoints...')
@@ -130,7 +141,7 @@ v 0.2
     
     # enumerate  smb endpoints
     print(f'[+] enumerating smb endpoints...')
-    get_smb_enum(smb_endpoints, session_directory)
+    get_smb_enum(smb_endpoints, session_directory, timeout)
 
 
     print(f'[+] PLNDR complete')
@@ -162,6 +173,12 @@ def get_settings():
     except:
         tty_ports = ['21','22','23']
     
+    # rdp_ports
+    try:
+        rdp_ports = parser.get('default_values', 'rdp_ports').split(',')
+    except:
+        tty_ports = ['3389']
+    
     # smb_ports
     try:
         smb_ports = parser.get('default_values', 'smb_ports').split(',')
@@ -180,8 +197,13 @@ def get_settings():
     except:
         user_agent = 'Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.88 Mobile Safari/537.36'
     
+    # timeout
+    try:
+        timeout = float(parser.get('default_values', 'timeout'))
+    except:
+        timeout = 45.0
 
-    return (output_directory, web_ports, tty_ports, smb_ports, interface_name, user_agent)
+    return (output_directory, web_ports, tty_ports, rdp_ports, smb_ports, interface_name, user_agent, timeout)
 
 
 def get_args():
@@ -253,39 +275,58 @@ def get_endpoints(target_ips, ports):
     return endpoints
 
 
-def get_web_screenshots(endpoints, session_directory):
+def get_web_screenshots(endpoints, session_directory, timeout):
     for endpoint in endpoints:
         file_name = f"{endpoint[0].replace('.', '_')}_{endpoint[1]}_screenshot.png"
-        subprocess.run(['wkhtmltoimage', f'{endpoint[0]}:{endpoint[1]}', f'{session_directory}/{file_name}'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            subprocess.run(['wkhtmltoimage', f'{endpoint[0]}:{endpoint[1]}', f'{session_directory}/{file_name}'], timeout=timeout, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except subprocess.TimeoutExpired:
+            print(f' |x timed out getting {endpoint[0]}:{endpoint[1]}')
 
-
-def get_web_source(endpoints, session_directory, user_agent):
+def get_web_source(endpoints, session_directory, user_agent, timeout):
     for endpoint in endpoints:
         file_name = f"{endpoint[0].replace('.', '_')}_{endpoint[1]}_source.html"
-        subprocess.run(['curl', '-kLA', user_agent, f'{endpoint[0]}:{endpoint[1]}', '-o', f'{session_directory}/{file_name}'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            subprocess.run(['curl', '-kLA', user_agent, f'{endpoint[0]}:{endpoint[1]}', '-o', f'{session_directory}/{file_name}'], timeout=timeout, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except subprocess.TimeoutExpired:
+            print(f' |x timed out getting {endpoint[0]}:{endpoint[1]}')
 
-
-def get_web_banners(endpoints, session_directory, user_agent):
+def get_web_banners(endpoints, session_directory, user_agent, timeout):
     for endpoint in endpoints:
         file_name = f"{endpoint[0].replace('.', '_')}_{endpoint[1]}_banner.txt"
-        subprocess.run(['curl', '-kLsvIA', user_agent, f'{endpoint[0]}:{endpoint[1]}', '-o', f'{session_directory}/{file_name}'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            subprocess.run(['curl', '-kLsvIA', user_agent, f'{endpoint[0]}:{endpoint[1]}', '-o', f'{session_directory}/{file_name}'], timeout=timeout, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except subprocess.TimeoutExpired:
+            print(f' |x timed out getting {endpoint[0]}:{endpoint[1]}')
 
-
-def get_tty_banners(endpoints, session_directory):
+def get_tty_banners(endpoints, session_directory, timeout):
     #nmap --script=banner 192.168.0.1 -p 22 -oN output.txt
 
     for endpoint in endpoints:
         file_name = f"{endpoint[0].replace('.', '_')}_{endpoint[1]}_banner.txt"
-        subprocess.run(['nmap', '-sV', '--script-timeout=10s', '--script=banner', f'{endpoint[0]}', '-p', f'{endpoint[1]}', '-oN', f'{session_directory}/{file_name}'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            subprocess.run(['nmap', '-sV', '--script-timeout=10s', '--script=banner', f'{endpoint[0]}', '-p', f'{endpoint[1]}', '-oN', f'{session_directory}/{file_name}'], timeout=timeout, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except subprocess.TimeoutExpired:
+            print(f' |x timed out getting {endpoint[0]}:{endpoint[1]}')
 
+def get_rdp_banners(endpoints, session_directory, timeout):
+    #nmap -p 3389 --script rdp-ntlm-info target_ip
+    for endpoint in endpoints:
+        file_name = f"{endpoint[0].replace('.', '_')}_{endpoint[1]}_rdp.txt"
+        try:
+            subprocess.run(['nmap', '--script-timeout=10s', '--script=rdp-ntlm-info', f'{endpoint[0]}', '-p', f'{endpoint[1]}', '-oN', f'{session_directory}/{file_name}'], timeout=timeout, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except subprocess.TimeoutExpired:
+            print(f' |x timed out getting {endpoint[0]}:{endpoint[1]}')
 
-def get_smb_enum(endpoints, session_directory):
+def get_smb_enum(endpoints, session_directory, timeout):
     #nmap -sV -Pn -vv -p445 --script smb-enum-shares.nse,smb-enum-users.nse 192.168.2.118
     
     for endpoint in endpoints:
         file_name = f"{endpoint[0].replace('.', '_')}_{endpoint[1]}_smb_enum.txt"
-        subprocess.run(['nmap', '-sV', '-Pn', '--script-timeout=15s', '--script=smb-enum-shares.nse,smb-enum-users.nse,smb-os-discovery.nse', f'{endpoint[0]}', '-p', f'{endpoint[1]}', '-oN', f'{session_directory}/{file_name}'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
+        try:
+            subprocess.run(['nmap', '-sV', '-Pn', '--script-timeout=15s', '--script=smb-enum-shares.nse,smb-enum-users.nse,smb-os-discovery.nse', f'{endpoint[0]}', '-p', f'{endpoint[1]}', '-oN', f'{session_directory}/{file_name}'], timeout=timeout, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except subprocess.TimeoutExpired:
+            print(f' |x timed out getting {endpoint[0]}:{endpoint[1]}')
 
 def create_session_directory(parent_directory):
     ts = datetime.utcnow()
