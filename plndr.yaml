@@ -1,0 +1,99 @@
+---
+output-directory: /opt/collect/plndr
+interface-name: wlan0
+lan-target-scan: "arp-scan --interface={INTERFACE_NAME} {CIDR}"
+network-target-scan: "nmap -n -sP {IP} -oG -"
+port-scan: "nmap -Pn --max-retries=5 {IP} -p {PORTS} --open"
+scan-groups:
+        - description: "web endpoints"
+          enabled: True
+          filename: "web-endpoints.txt"
+          ports: [80,8000,8080,443]
+          scans:
+              - description: "web screenshots"
+                enabled: True
+                command: "wkhtmltoimage {PREFIX}{IP}:{PORT} {OUTPUT_DIRECTORY}/{FORMATTED_IP}_{PORT}{FILENAME_EXTENSION}"
+                timeout: 15
+                variables:
+                    - name: "filename_extension"
+                      value: "_screenshot.png"
+                    - name: "prefix"
+                      type: "port-match"
+                      conditions:
+                          - match: [ 80,8000,8080 ]
+                            value: "http://"
+                          - match: [ 443 ]
+                            value: "https://"
+                      default: ""
+
+              - description: "web source"
+                enabled: True
+                command: "curl -kLA \"{USER-AGENT}\" {PREFIX}{IP}:{PORT} -o {OUTPUT_DIRECTORY}/{FORMATTED_IP}_{PORT}{FILENAME_EXTENSION}"
+                timeout: 15
+                variables:
+                    - name: "filename_extension"
+                      value: "_source.txt"
+                    - name: "user-agent"
+                      value: "Mozilla/5.0 (Linux; Android 9; SM-G973U Build/PPR1.180610.011) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Mobile Safari/537.36"
+                    - name: "prefix"
+                      type: "port-match"
+                      conditions:
+                          - match: [ 80,8000,8080 ]
+                            value: "http://"
+                          - match: [ 443 ]
+                            value: "https://"
+                      default: ""
+              - description: "web banners"
+                enabled: True
+                command: "curl -kLIA \"{USER-AGENT}\" {PREFIX}{IP}:{PORT} -o {OUTPUT_DIRECTORY}/{FORMATTED_IP}_{PORT}{FILENAME_EXTENSION}"
+                timeout: 15
+                variables:
+                    - name: "filename_extension"
+                      value: "_web-banners.txt"
+                    - name: "user-agent"
+                      value: "Mozilla/5.0 (Linux; Android 9; SM-G973U Build/PPR1.180610.011) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Mobile Safari/537.36"
+                    - name: "prefix"
+                      type: "port-match"
+                      conditions:
+                          - match: [ 80,8000,8080 ]
+                            value: "http://"
+                          - match: [ 443 ]
+                            value: "https://"
+                      default: ""
+        - description: "smb endpoints"
+          enabled: True
+          filename: "smb-endpoints.txt"
+          ports: [445]
+          scans:
+            - description: "smb enumeration"
+              enabled: True
+              command: "nmap -sV -Pn -vv -p {PORT} --script smb-enum-shares.nse,smb-enum-users.nse {IP} -oN {OUTPUT_DIRECTORY}/{FORMATTED_IP}_{PORT}{FILENAME_EXTENSION}"
+              timeout: 20
+              variables:
+                - name: "filename_extension"
+                  value: "_smb-enum.txt"
+        - description: "rdp endpoints"
+          enabled: False
+          filename: "rdp-endpoints.txt"
+          ports: [ 3389 ]
+          scans:
+            - description: "rdp banners"
+              enabled: True
+              command: "nmap -Pn -p {PORT} --script rdp-ntlm-info {IP} -oN {OUTPUT_DIRECTORY}/{FORMATTED_IP}_{PORT}{FILENAME_EXTENSION}"
+              timeout: 30
+              variables:
+                - name: "filename_extension"
+                  value: "_rdp-banners.txt"
+        - description: "tty endpoints"
+          enabled: True
+          filename: "tty-endpoints.txt"
+          ports: [ 22,23 ]
+          scans:
+            - description: "tty banners"
+              enabled: True
+              command: "nmap -Pn -sV -p {PORT} --script banner {IP} -oN {OUTPUT_DIRECTORY}/{FORMATTED_IP}_{PORT}{FILENAME_EXTENSION}"
+              timeout: 15
+              variables:
+                - name: "filename_extension"
+                  value: "_tty-banners.txt"
+
