@@ -59,7 +59,7 @@ v 0.3.0
 
         command = settings.network_target_scan_command(ip=args['target'])
         target_ips = get_network_ips(command)
-    else:
+    elif args['local']:
         # get network cidr
         cidr = get_network_cidr(settings.interface_name)
 
@@ -73,6 +73,12 @@ v 0.3.0
 
         target_ips, arp_scan = get_lan_ips(command)
         save_collection('arp_scan.txt', arp_scan, session_directory)
+    elif args['print_scans']:
+        # print out scans available in the plndr.yaml file ane exit
+        for scan_group in settings.scan_groups:
+            print_scan(scan_group)
+
+        sys.exit()
 
     print(f'[+] ip addresses identified')
 
@@ -115,9 +121,11 @@ def get_settings(args):
 
 
 def get_args():
-    ap = argparse.ArgumentParser(prog='plndr',
+    ap = argparse.ArgumentParser(prog='./plndr.py',
                                  usage='%(prog)s [options]',
-                                 description='PLNDR executes a collection of commands against target networks or individual IP addresses.  Reference the included \'plndr.yaml\' file for specific commands to run and what packages are required.',
+                                 description='PLNDR executes a collection of commands against target networks or '
+                                             'individual IP addresses.  Reference the included \'plndr.yaml\' file '
+                                             'for specific commands to run and what packages are required.',
                                  epilog='Happy plndr-ing!')
 
     ap.add_argument('-i',
@@ -136,6 +144,11 @@ def get_args():
                     '--local',
                     action='store_true',
                     help='plndr on the local LAN')
+
+    ag.add_argument('-p',
+                    '--print-scans',
+                    action='store_true',
+                    help='display scans in the plndr.yaml configuration')
 
     args = vars(ap.parse_args())
 
@@ -236,6 +249,7 @@ def get_label(single_descriptor, plural_descriptor, values):
     else:
         return f'{plural_descriptor} {", ".join([str(x) for x in values[:-1]])} and {str(values[len(values) - 1])}'
 
+
 def run_scan(target_ips, scan_group, session_directory, settings):
     # set ports label
     print(f'[+] identifying {scan_group.description} on {get_label("port", "ports", scan_group.ports)}')
@@ -278,6 +292,19 @@ def run_scan(target_ips, scan_group, session_directory, settings):
             except subprocess.TimeoutExpired:
                 print(f' |x timed out getting {ip}:{port}')
                 os.killpg(os.getpgid(p.pid), signal.SIGTERM)
+
+
+def print_scan(scan_group):
+    print(f'Scan Group: {scan_group.description}')
+    print(f'Ports: {scan_group.ports}')
+    print(f'Enabled: {scan_group.enabled}')
+    print(f'Scans:')
+    for scan in scan_group.scans:
+        print(f'\tDescription: {scan.description}')
+        print(f'\tEnabled: {scan.enabled}')
+        print(f'\tCommand: {scan.command}')
+        print()
+    print('\n')
 
 
 if __name__ == "__main__":
